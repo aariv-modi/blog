@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
+import { usePage } from "../hooks/usePage";
 
 type Result =
   | { kind: "idle" }
@@ -7,6 +8,7 @@ type Result =
   | { kind: "error"; message: string };
 
 export default function New() {
+  const headingRef = usePage<HTMLHeadingElement>("New Post — My Blog");
   const [password, setPassword] = useState(
     () => sessionStorage.getItem("blog-pw") ?? ""
   );
@@ -16,6 +18,26 @@ export default function New() {
   const [body, setBody] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<Result>({ kind: "idle" });
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+
+  function wrapSelection(before: string, after: string = before) {
+    const el = bodyRef.current;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const selected = body.slice(start, end);
+    const next = body.slice(0, start) + before + selected + after + body.slice(end);
+    setBody(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      if (start === end) {
+        const cursor = start + before.length;
+        el.setSelectionRange(cursor, cursor);
+      } else {
+        el.setSelectionRange(start + before.length, end + before.length);
+      }
+    });
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -66,7 +88,7 @@ export default function New() {
 
   return (
     <article className="post">
-      <h2>New Post</h2>
+      <h1 ref={headingRef} tabIndex={-1}>New Post</h1>
 
       {result.kind === "success" && (
         <div className="notice notice-success">
@@ -135,7 +157,24 @@ export default function New() {
 
         <label>
           <span>Body (markdown)</span>
+          <div className="editor-toolbar" role="toolbar" aria-label="Formatting">
+            <button type="button" onClick={() => wrapSelection("**")} aria-label="Bold" title="Bold">
+              <strong>B</strong>
+            </button>
+            <button type="button" onClick={() => wrapSelection("*")} aria-label="Italic" title="Italic">
+              <em>I</em>
+            </button>
+            <button
+              type="button"
+              onClick={() => wrapSelection("<u>", "</u>")}
+              aria-label="Underline"
+              title="Underline"
+            >
+              <u>U</u>
+            </button>
+          </div>
           <textarea
+            ref={bodyRef}
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={18}

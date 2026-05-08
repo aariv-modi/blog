@@ -1,25 +1,33 @@
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { useEffect } from "react";
+import { Link, Outlet, useLocation, useNavigationType } from "react-router-dom";
+
+function useScrollToTopOnNavigate() {
+  const location = useLocation();
+  const navType = useNavigationType();
+  useEffect(() => {
+    if (navType === "POP") return;
+    window.scrollTo(0, 0);
+  }, [location.pathname, navType]);
+}
 
 export default function Layout() {
+  useScrollToTopOnNavigate();
+
   return (
     <div className="site">
-      <header className="site-header">
-        <div className="container header-inner">
-          <Link to="/" className="site-title">My Blog</Link>
-          <nav className="site-nav">
-            <NavLink to="/" end>Home</NavLink>
-          </nav>
-        </div>
+      <a href="#main" className="skip-link">Skip to main content</a>
+
+      <header className="container site-header">
+        <Link to="/" className="site-title">My Blog</Link>
       </header>
 
-      <main className="container site-main">
+      <main id="main" className="container site-main">
         <Outlet />
       </main>
 
-      <footer className="site-footer">
-        <div className="container">
-          <p>&copy; {new Date().getFullYear()} My Blog. Built with React, TypeScript, and Vite.</p>
-        </div>
+      <footer className="container site-footer">
+        <Link to="/new">New post</Link>
+        <a href="mailto:aariv.modi@gmail.com">aariv.modi@gmail.com</a>
       </footer>
     </div>
   );

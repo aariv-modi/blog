@@ -7,6 +7,7 @@ export type Post = {
   excerpt: string;
   body: string;
   html: string;
+  readingMinutes: number;
 };
 
 const modules = import.meta.glob("../posts/*.md", {
@@ -29,6 +30,25 @@ function parseFrontmatter(raw: string): {
   return { data, content: match[2] };
 }
 
+function injectLazyImages(html: string): string {
+  return html.replace(/<img(?![^>]*\bloading=)/gi, '<img loading="lazy"');
+}
+
+function demoteHeadings(html: string): string {
+  return html.replace(
+    /<(\/?)h([1-5])(\b[^>]*)?>/gi,
+    (_, slash: string, level: string, attrs = "") => {
+      const newLevel = parseInt(level, 10) + 1;
+      return `<${slash}h${newLevel}${attrs}>`;
+    }
+  );
+}
+
+function readingMinutes(text: string): number {
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.round(words / 225));
+}
+
 marked.setOptions({ gfm: true, breaks: false });
 
 export const posts: Post[] = Object.entries(modules)
@@ -41,13 +61,23 @@ export const posts: Post[] = Object.entries(modules)
       date: data.date || "1970-01-01",
       excerpt: data.excerpt || "",
       body: content,
-      html: marked.parse(content) as string,
+      html: demoteHeadings(injectLazyImages(marked.parse(content) as string)),
+      readingMinutes: readingMinutes(content),
     };
   })
   .sort((a, b) => b.date.localeCompare(a.date));
 
 export function getPost(slug: string): Post | undefined {
   return posts.find((p) => p.slug === slug);
+}
+
+export function getAdjacent(slug: string): { older?: Post; newer?: Post } {
+  const i = posts.findIndex((p) => p.slug === slug);
+  if (i === -1) return {};
+  return {
+    newer: i > 0 ? posts[i - 1] : undefined,
+    older: i < posts.length - 1 ? posts[i + 1] : undefined,
+  };
 }
 
 export function formatDate(iso: string): string {
